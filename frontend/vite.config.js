@@ -12,7 +12,6 @@ export default defineConfig({
       }
     }
   },
-  // Add this for production build
   build: {
     outDir: 'dist',
     sourcemap: false,
@@ -20,9 +19,17 @@ export default defineConfig({
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
-          ui: ['@headlessui/react', '@heroicons/react']
+          // Only include packages you actually have
+          ui: ['framer-motion', 'lucide-react'],
+          forms: ['react-hook-form', 'react-hot-toast'],
+          payments: ['@stripe/react-stripe-js', '@stripe/stripe-js'],
+          charts: ['recharts']
         }
       }
     }
+  },
+  // Optimize dependencies for better build
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react-router-dom', 'zustand']
   }
 })
