@@ -43,9 +43,20 @@ const clearDatabase = async () => {
 
 const seedCategories = async () => {
   console.log('🌱 Seeding categories...');
-  const created = await Category.insertMany(categories);
-  console.log(`✅ Created ${created.length} categories`);
-  return created.reduce((map, c) => { map[c.name] = c._id; return map; }, {});
+  try {
+    const created = await Category.insertMany(categories);
+    console.log(`✅ Created ${created.length} categories`);
+    return created.reduce((map, c) => { map[c.name] = c._id; return map; }, {});
+  } catch (error) {
+    // Handle duplicate key errors gracefully
+    if (error.code === 11000) {
+      console.log('⚠️  Duplicate categories found. Skipping...');
+      const existing = await Category.find({});
+      console.log(`✅ Found ${existing.length} existing categories`);
+      return existing.reduce((map, c) => { map[c.name] = c._id; return map; }, {});
+    }
+    throw error;
+  }
 };
 
 const seedUsers = async () => {
@@ -86,9 +97,19 @@ const seedUsers = async () => {
     }))
   );
 
-  const users = await User.insertMany(hashedUsers);
-  console.log(`✅ Created ${users.length} users`);
-  return users;
+  try {
+    const users = await User.insertMany(hashedUsers);
+    console.log(`✅ Created ${users.length} users`);
+    return users;
+  } catch (error) {
+    if (error.code === 11000) {
+      console.log('⚠️  Users already exist. Fetching existing...');
+      const users = await User.find({});
+      console.log(`✅ Found ${users.length} existing users`);
+      return users;
+    }
+    throw error;
+  }
 };
 
 const seedEvents = async (catMap, organizerId) => {
@@ -221,9 +242,19 @@ const seedEvents = async (catMap, organizerId) => {
     }
   ];
 
-  const events = await Event.insertMany(eventsData);
-  console.log(`✅ Created ${events.length} events`);
-  return events;
+  try {
+    const events = await Event.insertMany(eventsData);
+    console.log(`✅ Created ${events.length} events`);
+    return events;
+  } catch (error) {
+    if (error.code === 11000) {
+      console.log('⚠️  Events already exist. Skipping...');
+      const existing = await Event.find({});
+      console.log(`✅ Found ${existing.length} existing events`);
+      return existing;
+    }
+    throw error;
+  }
 };
 
 const seedBooking = async (user, events) => {
@@ -270,17 +301,33 @@ const seedDatabase = async () => {
     
     await connectDB();
     
-    // Check if already seeded
+    // Check if FORCE_SEED is enabled
+    const forceSeed = process.env.FORCE_SEED === 'true';
+    
+    console.log(`📌 Force seed flag: ${forceSeed}`);
+    
+    // Check current data
     const userCount = await User.countDocuments();
-    if (userCount > 0 && process.env.FORCE_SEED !== 'true') {
+    const eventCount = await Event.countDocuments();
+    const categoryCount = await Category.countDocuments();
+    
+    console.log(`📊 Current data: ${userCount} users, ${eventCount} events, ${categoryCount} categories`);
+    
+    // If partial data (users exist but no events), force re-seed automatically
+    if (userCount > 0 && eventCount === 0) {
+      console.log('⚠️  Partial data detected (users exist but no events).');
+      console.log('🔄 Forcing re-seed to fix incomplete data...');
+      // Continue to clear and re-seed
+    } else if (userCount > 0 && !forceSeed) {
       console.log('✅ Database already has users. Skipping...');
       console.log('💡 Set FORCE_SEED=true to force re-seeding');
       console.log(`\n📊 Current data:\n   Users: ${userCount}`);
-      console.log(`   Events: ${await Event.countDocuments()}`);
-      console.log(`   Categories: ${await Category.countDocuments()}\n`);
-      process.exit(0);
+      console.log(`   Events: ${eventCount}`);
+      console.log(`   Categories: ${categoryCount}\n`);
+      return; // Exit without seeding
     }
 
+    console.log('🗑️  Clearing existing data...');
     await clearDatabase();
 
     // Seed in order (categories → users → events → bookings)
@@ -297,10 +344,10 @@ const seedDatabase = async () => {
     console.log('👤 User Login:      user@eventflow.com  /  Password123');
     console.log('━'.repeat(50) + '\n');
 
-    process.exit(0);
+    return; // Success - don't exit process when called from API
   } catch (error) {
     console.error('❌ Seeding failed:', error);
-    process.exit(1);
+    throw error; // Re-throw to be handled by the caller
   }
 };
 
