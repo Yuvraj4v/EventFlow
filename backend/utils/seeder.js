@@ -116,19 +116,15 @@ const seedEvents = async (catMap, organizerId) => {
   console.log('🎉 Seeding events...');
   console.log('📋 Available categories:', Object.keys(catMap));
   
-  // ─── HELPER: Get category ID with fallback ──────────────
-  const getCategoryId = async (categoryName) => {
-    let id = catMap[categoryName];
-    if (id) return id;
-    
-    const category = await Category.findOne({ name: categoryName });
-    if (category) {
-      console.log(`✅ Found category "${categoryName}" in database`);
-      return category._id;
+  // ─── HELPER: Get category ID ──────────────────────────────
+  const getCategoryId = (categoryName) => {
+    const id = catMap[categoryName];
+    if (!id) {
+      console.log(`❌ Category "${categoryName}" NOT found in map!`);
+      return null;
     }
-    
-    console.log(`❌ Category "${categoryName}" not found!`);
-    return null;
+    console.log(`✅ Category "${categoryName}" found`);
+    return id;
   };
   
   const eventsData = [
@@ -136,7 +132,7 @@ const seedEvents = async (catMap, organizerId) => {
       title: 'React Summit 2025',
       description: 'The biggest React conference of the year. Join 2000+ developers for talks, workshops, and networking.',
       shortDescription: 'The biggest React conference with 50+ speakers',
-      category: await getCategoryId('Technology'),
+      category: getCategoryId('Technology'),
       organizer: organizerId,
       coverImage: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800',
       startDate: futureDate(30),
@@ -153,7 +149,7 @@ const seedEvents = async (catMap, organizerId) => {
       title: 'Electronic Music Festival',
       description: 'A three-day electronic music extravaganza featuring world-class DJs and live acts.',
       shortDescription: '3-day electronic music festival with 40+ artists',
-      category: await getCategoryId('Music'),
+      category: getCategoryId('Music'),
       organizer: organizerId,
       coverImage: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800',
       startDate: futureDate(45),
@@ -170,7 +166,7 @@ const seedEvents = async (catMap, organizerId) => {
       title: 'Startup Pitch Competition',
       description: 'Present your startup to top VCs and angel investors. Win up to $100,000 in funding.',
       shortDescription: 'Win $100K in funding - pitch to top investors',
-      category: await getCategoryId('Business'),
+      category: getCategoryId('Business'),
       organizer: organizerId,
       coverImage: 'https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=800',
       startDate: futureDate(14),
@@ -186,7 +182,7 @@ const seedEvents = async (catMap, organizerId) => {
       title: 'International Food Festival',
       description: 'Taste cuisines from 50+ countries! Local and international chefs come together for a weekend of culinary delights.',
       shortDescription: 'Taste cuisines from 50+ countries!',
-      category: await getCategoryId('Food & Drink'),
+      category: getCategoryId('Food & Drink'),
       organizer: organizerId,
       coverImage: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800',
       startDate: futureDate(20),
@@ -202,7 +198,7 @@ const seedEvents = async (catMap, organizerId) => {
       title: 'Morning Yoga & Wellness Retreat',
       description: 'Start your weekend right with a sunrise yoga session followed by meditation, healthy brunch, and wellness workshops.',
       shortDescription: 'Sunrise yoga + meditation + healthy brunch',
-      category: await getCategoryId('Health & Wellness'),
+      category: getCategoryId('Health & Wellness'),
       organizer: organizerId,
       coverImage: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=800',
       startDate: futureDate(7),
@@ -215,7 +211,7 @@ const seedEvents = async (catMap, organizerId) => {
       title: 'Modern Art Exhibition: Futures',
       description: 'An immersive exhibition exploring the intersection of technology and traditional art forms.',
       shortDescription: 'Immersive art meets technology - 30 artists',
-      category: await getCategoryId('Arts & Culture'),
+      category: getCategoryId('Arts & Culture'),
       organizer: organizerId,
       coverImage: 'https://images.unsplash.com/photo-1541367777708-7905fe3296c0?w=800',
       startDate: futureDate(5),
@@ -228,7 +224,7 @@ const seedEvents = async (catMap, organizerId) => {
       title: 'AI & Machine Learning Summit',
       description: 'Deep dive into the latest AI/ML trends with hands-on workshops and keynotes from Google, OpenAI, and leading research institutions.',
       shortDescription: 'AI/ML workshops with Google & OpenAI experts',
-      category: await getCategoryId('Technology'),
+      category: getCategoryId('Technology'),
       organizer: organizerId,
       coverImage: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800',
       startDate: futureDate(60),
@@ -244,7 +240,7 @@ const seedEvents = async (catMap, organizerId) => {
       title: 'NYC Marathon Training Camp',
       description: 'A 3-day intensive marathon training camp with Olympic coaches. Includes personalized training plans, nutrition workshops, sports massage, and group runs.',
       shortDescription: 'Olympic coaches + personalized marathon training',
-      category: await getCategoryId('Sports'),
+      category: getCategoryId('Sports'),
       organizer: organizerId,
       coverImage: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800',
       startDate: futureDate(21),
@@ -268,23 +264,15 @@ const seedEvents = async (catMap, organizerId) => {
   console.log(`📊 Creating ${validEvents.length} events...`);
 
   try {
-    // Delete ALL existing events first
+    // ALWAYS delete existing events first
     await Event.deleteMany({});
     console.log('🗑️  Cleared existing events');
     
-    // Insert all events
     const events = await Event.insertMany(validEvents);
     console.log(`✅ Created ${events.length} events`);
     return events;
   } catch (error) {
     console.error('❌ Event insertion error:', error.message);
-    // If it's a duplicate key error, handle it
-    if (error.code === 11000) {
-      console.log('⚠️  Duplicate key error - fetching existing events');
-      const existing = await Event.find({});
-      console.log(`✅ Found ${existing.length} existing events`);
-      return existing;
-    }
     throw error;
   }
 };
