@@ -28,9 +28,9 @@ const futureDate = (days) => new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 const generateSlug = (title) => {
   return title
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')  // Replace non-alphanumeric with dash
-    .replace(/^-+|-+$/g, '')       // Remove leading/trailing dashes
-    .replace(/-+/g, '-');          // Remove duplicate dashes
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-+/g, '-');
 };
 
 const connectDB = async () => {
@@ -53,7 +53,6 @@ const clearDatabase = async () => {
 const seedCategories = async () => {
   console.log('🌱 Seeding categories...');
   
-  // ALWAYS clear categories first to avoid duplicates
   await Category.deleteMany({});
   console.log('🗑️  Cleared existing categories');
   
@@ -61,7 +60,6 @@ const seedCategories = async () => {
     const created = await Category.insertMany(categories);
     console.log(`✅ Created ${created.length} categories`);
     
-    // Build the category map
     const catMap = {};
     created.forEach(c => {
       catMap[c.name] = c._id;
@@ -70,7 +68,6 @@ const seedCategories = async () => {
     return catMap;
   } catch (error) {
     console.error('❌ Category insertion error:', error.message);
-    // If duplicate error, fetch existing
     if (error.code === 11000) {
       console.log('⚠️  Duplicate categories found. Fetching existing...');
       const existing = await Category.find({});
@@ -115,7 +112,6 @@ const seedUsers = async () => {
     }
   ];
 
-  // Hash passwords
   const hashedUsers = await Promise.all(
     usersData.map(async (user) => ({
       ...user,
@@ -142,7 +138,6 @@ const seedEvents = async (catMap, organizerId) => {
   console.log('🎉 Seeding events...');
   console.log('📋 Available categories:', Object.keys(catMap));
   
-  // ─── HELPER: Get category ID ──────────────────────────────
   const getCategoryId = (categoryName) => {
     const id = catMap[categoryName];
     if (!id) {
@@ -153,19 +148,10 @@ const seedEvents = async (catMap, organizerId) => {
     return id;
   };
   
-  // ─── HELPER: Generate slug ────────────────────────────────
-  const generateSlug = (title) => {
-    return title
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .replace(/-+/g, '-');
-  };
-  
   const eventsData = [
     {
       title: 'React Summit 2025',
-      slug: generateSlug('React Summit 2025'), // ← ADD THIS
+      slug: generateSlug('React Summit 2025'),
       description: 'The biggest React conference of the year. Join 2000+ developers for talks, workshops, and networking.',
       shortDescription: 'The biggest React conference with 50+ speakers',
       category: getCategoryId('Technology'),
@@ -183,7 +169,7 @@ const seedEvents = async (catMap, organizerId) => {
     },
     {
       title: 'Electronic Music Festival',
-      slug: generateSlug('Electronic Music Festival'), // ← ADD THIS
+      slug: generateSlug('Electronic Music Festival'),
       description: 'A three-day electronic music extravaganza featuring world-class DJs and live acts.',
       shortDescription: '3-day electronic music festival with 40+ artists',
       category: getCategoryId('Music'),
@@ -201,7 +187,7 @@ const seedEvents = async (catMap, organizerId) => {
     },
     {
       title: 'Startup Pitch Competition',
-      slug: generateSlug('Startup Pitch Competition'), // ← ADD THIS
+      slug: generateSlug('Startup Pitch Competition'),
       description: 'Present your startup to top VCs and angel investors. Win up to $100,000 in funding.',
       shortDescription: 'Win $100K in funding - pitch to top investors',
       category: getCategoryId('Business'),
@@ -218,7 +204,7 @@ const seedEvents = async (catMap, organizerId) => {
     },
     {
       title: 'International Food Festival',
-      slug: generateSlug('International Food Festival'), // ← ADD THIS
+      slug: generateSlug('International Food Festival'),
       description: 'Taste cuisines from 50+ countries! Local and international chefs come together for a weekend of culinary delights.',
       shortDescription: 'Taste cuisines from 50+ countries!',
       category: getCategoryId('Food & Drink'),
@@ -235,7 +221,7 @@ const seedEvents = async (catMap, organizerId) => {
     },
     {
       title: 'Morning Yoga & Wellness Retreat',
-      slug: generateSlug('Morning Yoga Wellness Retreat'), // ← ADD THIS
+      slug: generateSlug('Morning Yoga Wellness Retreat'),
       description: 'Start your weekend right with a sunrise yoga session followed by meditation, healthy brunch, and wellness workshops.',
       shortDescription: 'Sunrise yoga + meditation + healthy brunch',
       category: getCategoryId('Health & Wellness'),
@@ -249,7 +235,7 @@ const seedEvents = async (catMap, organizerId) => {
     },
     {
       title: 'Modern Art Exhibition: Futures',
-      slug: generateSlug('Modern Art Exhibition Futures'), // ← ADD THIS
+      slug: generateSlug('Modern Art Exhibition Futures'),
       description: 'An immersive exhibition exploring the intersection of technology and traditional art forms.',
       shortDescription: 'Immersive art meets technology - 30 artists',
       category: getCategoryId('Arts & Culture'),
@@ -263,7 +249,7 @@ const seedEvents = async (catMap, organizerId) => {
     },
     {
       title: 'AI & Machine Learning Summit',
-      slug: generateSlug('AI Machine Learning Summit'), // ← ADD THIS
+      slug: generateSlug('AI Machine Learning Summit'),
       description: 'Deep dive into the latest AI/ML trends with hands-on workshops and keynotes from Google, OpenAI, and leading research institutions.',
       shortDescription: 'AI/ML workshops with Google & OpenAI experts',
       category: getCategoryId('Technology'),
@@ -280,7 +266,7 @@ const seedEvents = async (catMap, organizerId) => {
     },
     {
       title: 'NYC Marathon Training Camp',
-      slug: generateSlug('NYC Marathon Training Camp'), // ← ADD THIS
+      slug: generateSlug('NYC Marathon Training Camp'),
       description: 'A 3-day intensive marathon training camp with Olympic coaches. Includes personalized training plans, nutrition workshops, sports massage, and group runs.',
       shortDescription: 'Olympic coaches + personalized marathon training',
       category: getCategoryId('Sports'),
@@ -307,7 +293,6 @@ const seedEvents = async (catMap, organizerId) => {
   console.log(`📊 Creating ${validEvents.length} events...`);
 
   try {
-    // ALWAYS delete existing events first
     await Event.deleteMany({});
     console.log('🗑️  Cleared existing events');
     
@@ -320,6 +305,44 @@ const seedEvents = async (catMap, organizerId) => {
   }
 };
 
+// ─── ADD THIS FUNCTION ────────────────────────────────────────
+const seedBooking = async (user, events) => {
+  if (events.length === 0) return;
+  
+  console.log('📋 Creating sample booking...');
+  try {
+    const firstEvent = events[0];
+    const ticket = firstEvent.tickets[1] || firstEvent.tickets[0];
+    
+    await Booking.create({
+      user: user._id,
+      event: firstEvent._id,
+      tickets: [{
+        ticketType: { ticketId: ticket._id, name: ticket.name, price: ticket.price },
+        quantity: 1,
+        subtotal: ticket.price,
+        ticketCodes: ['TKT-ABC12345']
+      }],
+      attendeeInfo: { 
+        firstName: user.name.split(' ')[0] || 'John', 
+        lastName: user.name.split(' ')[1] || 'Doe', 
+        email: user.email, 
+        phone: '+1-555-0100' 
+      },
+      payment: { 
+        method: 'stripe', 
+        status: 'completed', 
+        amount: ticket.price, 
+        paidAt: new Date() 
+      },
+      status: 'confirmed'
+    });
+    console.log('✅ Sample booking created');
+  } catch (error) {
+    console.log('⚠️  Booking creation skipped:', error.message);
+  }
+};
+
 // ─── Main Seeder Function ────────────────────────────────────
 const seedDatabase = async () => {
   try {
@@ -327,40 +350,34 @@ const seedDatabase = async () => {
     
     await connectDB();
     
-    // Check if FORCE_SEED is enabled
     const forceSeed = process.env.FORCE_SEED === 'true';
-    
     console.log(`📌 Force seed flag: ${forceSeed}`);
     
-    // Check current data
     const userCount = await User.countDocuments();
     const eventCount = await Event.countDocuments();
     const categoryCount = await Category.countDocuments();
     
     console.log(`📊 Current data: ${userCount} users, ${eventCount} events, ${categoryCount} categories`);
     
-    // If partial data (users exist but no events), force re-seed automatically
     if (userCount > 0 && eventCount === 0) {
       console.log('⚠️  Partial data detected (users exist but no events).');
       console.log('🔄 Forcing re-seed to fix incomplete data...');
-      // Continue to clear and re-seed
     } else if (userCount > 0 && !forceSeed) {
       console.log('✅ Database already has users. Skipping...');
       console.log('💡 Set FORCE_SEED=true to force re-seeding');
       console.log(`\n📊 Current data:\n   Users: ${userCount}`);
       console.log(`   Events: ${eventCount}`);
       console.log(`   Categories: ${categoryCount}\n`);
-      return; // Exit without seeding
+      return;
     }
 
     console.log('🗑️  Clearing existing data...');
     await clearDatabase();
 
-    // Seed in order (categories → users → events → bookings)
     const catMap = await seedCategories();
     const users = await seedUsers();
-    const events = await seedEvents(catMap, users[1]._id); // organizer is index 1
-    await seedBooking(users[2], events); // regular user is index 2
+    const events = await seedEvents(catMap, users[1]._id);
+    await seedBooking(users[2], events);
 
     console.log('\n' + '━'.repeat(50));
     console.log('✅ Database seeded successfully!');
@@ -370,18 +387,16 @@ const seedDatabase = async () => {
     console.log('👤 User Login:      user@eventflow.com  /  Password123');
     console.log('━'.repeat(50) + '\n');
 
-    return; // Success - don't exit process when called from API
+    return;
   } catch (error) {
     console.error('❌ Seeding failed:', error);
-    throw error; // Re-throw to be handled by the caller
+    throw error;
   }
 };
 
-// ─── Handle Script Execution & Export ────────────────────────
-// Export for auto-seeding and API endpoint
+// ─── Export ──────────────────────────────────────────────────
 module.exports = seedDatabase;
 
-// Run directly if called as script (npm run seed)
 if (require.main === module) {
   seedDatabase().catch(err => {
     console.error('❌ Seeding failed:', err);
