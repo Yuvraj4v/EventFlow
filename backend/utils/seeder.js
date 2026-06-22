@@ -114,13 +114,31 @@ const seedUsers = async () => {
 
 const seedEvents = async (catMap, organizerId) => {
   console.log('🎉 Seeding events...');
+  console.log('📋 Available categories:', Object.keys(catMap));
+  
+  // ─── HELPER: Get category ID with fallback ──────────────
+  const getCategoryId = async (categoryName) => {
+    // First try the map
+    let id = catMap[categoryName];
+    if (id) return id;
+    
+    // If not found, query the database directly
+    const category = await Category.findOne({ name: categoryName });
+    if (category) {
+      console.log(`✅ Found category "${categoryName}" in database`);
+      return category._id;
+    }
+    
+    console.log(`❌ Category "${categoryName}" not found!`);
+    return null;
+  };
   
   const eventsData = [
     {
       title: 'React Summit 2025',
       description: 'The biggest React conference of the year. Join 2000+ developers for talks, workshops, and networking. Learn from core team members and industry experts about the latest React features, performance optimization, and real-world case studies.',
       shortDescription: 'The biggest React conference with 50+ speakers',
-      category: catMap['Technology'],
+      category: await getCategoryId('Technology'),
       organizer: organizerId,
       coverImage: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800',
       startDate: futureDate(30),
@@ -137,7 +155,7 @@ const seedEvents = async (catMap, organizerId) => {
       title: 'Electronic Music Festival',
       description: 'A three-day electronic music extravaganza featuring world-class DJs and live acts. Multiple stages, immersive art installations, and an unforgettable experience under the stars.',
       shortDescription: '3-day electronic music festival with 40+ artists',
-      category: catMap['Music'],
+      category: await getCategoryId('Music'),
       organizer: organizerId,
       coverImage: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800',
       startDate: futureDate(45),
@@ -154,7 +172,7 @@ const seedEvents = async (catMap, organizerId) => {
       title: 'Startup Pitch Competition',
       description: 'Present your startup to top VCs and angel investors. Win up to $100,000 in funding and prizes. Network with 500+ entrepreneurs, investors, and industry leaders.',
       shortDescription: 'Win $100K in funding - pitch to top investors',
-      category: catMap['Business'],
+      category: await getCategoryId('Business'),
       organizer: organizerId,
       coverImage: 'https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=800',
       startDate: futureDate(14),
@@ -170,7 +188,7 @@ const seedEvents = async (catMap, organizerId) => {
       title: 'International Food Festival',
       description: 'Taste cuisines from 50+ countries! Local and international chefs come together for a weekend of culinary delights. Cooking demos, food competitions, and masterclasses.',
       shortDescription: 'Taste cuisines from 50+ countries!',
-      category: catMap['Food & Drink'],
+      category: await getCategoryId('Food & Drink'),
       organizer: organizerId,
       coverImage: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800',
       startDate: futureDate(20),
@@ -186,7 +204,7 @@ const seedEvents = async (catMap, organizerId) => {
       title: 'Morning Yoga & Wellness Retreat',
       description: 'Start your weekend right with a sunrise yoga session followed by meditation, healthy brunch, and wellness workshops. Suitable for all levels from beginners to advanced practitioners.',
       shortDescription: 'Sunrise yoga + meditation + healthy brunch',
-      category: catMap['Health & Wellness'],
+      category: await getCategoryId('Health & Wellness'),
       organizer: organizerId,
       coverImage: 'https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?w=800',
       startDate: futureDate(7),
@@ -199,7 +217,7 @@ const seedEvents = async (catMap, organizerId) => {
       title: 'Modern Art Exhibition: Futures',
       description: 'An immersive exhibition exploring the intersection of technology and traditional art forms. Featuring works from 30 emerging and established artists from around the world.',
       shortDescription: 'Immersive art meets technology - 30 artists',
-      category: catMap['Arts & Culture'],
+      category: await getCategoryId('Arts & Culture'),
       organizer: organizerId,
       coverImage: 'https://images.unsplash.com/photo-1541367777708-7905fe3296c0?w=800',
       startDate: futureDate(5),
@@ -212,7 +230,7 @@ const seedEvents = async (catMap, organizerId) => {
       title: 'AI & Machine Learning Summit',
       description: 'Deep dive into the latest AI/ML trends with hands-on workshops and keynotes from Google, OpenAI, and leading research institutions. Perfect for developers, data scientists, and AI enthusiasts.',
       shortDescription: 'AI/ML workshops with Google & OpenAI experts',
-      category: catMap['Technology'],
+      category: await getCategoryId('Technology'),
       organizer: organizerId,
       coverImage: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=800',
       startDate: futureDate(60),
@@ -228,7 +246,7 @@ const seedEvents = async (catMap, organizerId) => {
       title: 'NYC Marathon Training Camp',
       description: 'A 3-day intensive marathon training camp with Olympic coaches. Includes personalized training plans, nutrition workshops, sports massage, and group runs through iconic NYC routes.',
       shortDescription: 'Olympic coaches + personalized marathon training',
-      category: catMap['Sports'],
+      category: await getCategoryId('Sports'),
       organizer: organizerId,
       coverImage: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=800',
       startDate: futureDate(21),
@@ -242,8 +260,15 @@ const seedEvents = async (catMap, organizerId) => {
     }
   ];
 
+  // Filter out events with null category
+  const validEvents = eventsData.filter(event => event.category !== null);
+  
+  if (validEvents.length !== eventsData.length) {
+    console.log(`⚠️  Skipping ${eventsData.length - validEvents.length} events due to missing categories`);
+  }
+
   try {
-    const events = await Event.insertMany(eventsData);
+    const events = await Event.insertMany(validEvents);
     console.log(`✅ Created ${events.length} events`);
     return events;
   } catch (error) {
