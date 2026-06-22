@@ -48,14 +48,11 @@ const allowedOrigins = [
   'http://localhost:3000',
   'https://event-flow-dusky-xi.vercel.app',
   process.env.FRONTEND_URL
-].filter(Boolean); // Remove any undefined values
+].filter(Boolean);
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
-    // Check if the origin is allowed
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -68,7 +65,6 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
-// Add OPTIONS handling for preflight requests
 app.options('*', cors());
 
 // ─── Body Parsing Middleware ────────────────────────────────
@@ -117,15 +113,50 @@ const connectDB = async () => {
   }
 };
 
+// ─── Auto-Seed Database ─────────────────────────────────────
+const autoSeed = async () => {
+  if (process.env.AUTO_SEED !== 'true') {
+    console.log('⏭️  Auto-seed skipped (AUTO_SEED not enabled)');
+    return;
+  }
+
+  try {
+    const User = require('./models/User');
+    const userCount = await User.countDocuments();
+    
+    if (userCount > 0) {
+      console.log(`✅ Database already has ${userCount} users. Skipping seed.`);
+      return;
+    }
+
+    console.log('🌱 Auto-seeding database...');
+    const seedData = require('./utils/seeder');
+    
+    if (typeof seedData === 'function') {
+      await seedData();
+      console.log('✅ Auto-seed completed successfully!');
+    } else {
+      console.log('⚠️  Seeder not exported as function.');
+      console.log('💡 Run manually: node utils/seeder.js');
+    }
+  } catch (error) {
+    console.log('⚠️  Auto-seed failed:', error.message);
+    console.log('💡 Run manually: node utils/seeder.js');
+  }
+};
+
 // ─── Start Server ───────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
   await connectDB();
+  await autoSeed();
+  
   app.listen(PORT, () => {
     console.log(`🚀 EventFlow API running on port ${PORT}`);
     console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`🔗 API URL: http://localhost:${PORT}/api`);
+    console.log(`✅ CORS enabled for:`, allowedOrigins.join(', '));
   });
 };
 
