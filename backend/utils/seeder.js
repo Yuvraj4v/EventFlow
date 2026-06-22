@@ -118,11 +118,9 @@ const seedEvents = async (catMap, organizerId) => {
   
   // ─── HELPER: Get category ID with fallback ──────────────
   const getCategoryId = async (categoryName) => {
-    // First try the map
     let id = catMap[categoryName];
     if (id) return id;
     
-    // If not found, query the database directly
     const category = await Category.findOne({ name: categoryName });
     if (category) {
       console.log(`✅ Found category "${categoryName}" in database`);
@@ -136,14 +134,14 @@ const seedEvents = async (catMap, organizerId) => {
   const eventsData = [
     {
       title: 'React Summit 2025',
-      description: 'The biggest React conference of the year. Join 2000+ developers for talks, workshops, and networking. Learn from core team members and industry experts about the latest React features, performance optimization, and real-world case studies.',
+      description: 'The biggest React conference of the year. Join 2000+ developers for talks, workshops, and networking.',
       shortDescription: 'The biggest React conference with 50+ speakers',
       category: await getCategoryId('Technology'),
       organizer: organizerId,
       coverImage: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800',
       startDate: futureDate(30),
       endDate: futureDate(32),
-      location: { type: 'physical', venue: 'Javits Center', address: '429 11th Ave', city: 'New York', state: 'NY', country: 'USA', coordinates: { lat: 40.7578, lng: -74.0022 } },
+      location: { type: 'physical', venue: 'Javits Center', address: '429 11th Ave', city: 'New York', state: 'NY', country: 'USA' },
       tickets: [
         { name: 'Early Bird', price: 299, quantity: 200, description: 'Limited early bird pricing' },
         { name: 'General', price: 499, quantity: 1000, description: 'Standard conference ticket' },
@@ -153,7 +151,7 @@ const seedEvents = async (catMap, organizerId) => {
     },
     {
       title: 'Electronic Music Festival',
-      description: 'A three-day electronic music extravaganza featuring world-class DJs and live acts. Multiple stages, immersive art installations, and an unforgettable experience under the stars.',
+      description: 'A three-day electronic music extravaganza featuring world-class DJs and live acts.',
       shortDescription: '3-day electronic music festival with 40+ artists',
       category: await getCategoryId('Music'),
       organizer: organizerId,
@@ -170,7 +168,7 @@ const seedEvents = async (catMap, organizerId) => {
     },
     {
       title: 'Startup Pitch Competition',
-      description: 'Present your startup to top VCs and angel investors. Win up to $100,000 in funding and prizes. Network with 500+ entrepreneurs, investors, and industry leaders.',
+      description: 'Present your startup to top VCs and angel investors. Win up to $100,000 in funding.',
       shortDescription: 'Win $100K in funding - pitch to top investors',
       category: await getCategoryId('Business'),
       organizer: organizerId,
@@ -182,11 +180,11 @@ const seedEvents = async (catMap, organizerId) => {
         { name: 'Attendee', price: 0, quantity: 500 },
         { name: 'Competitor', price: 50, quantity: 100 }
       ],
-      status: 'published', isFeatured: true, isFree: false, tags: ['startup', 'pitch', 'funding', 'networking']
+      status: 'published', isFeatured: true, tags: ['startup', 'pitch', 'funding', 'networking']
     },
     {
       title: 'International Food Festival',
-      description: 'Taste cuisines from 50+ countries! Local and international chefs come together for a weekend of culinary delights. Cooking demos, food competitions, and masterclasses.',
+      description: 'Taste cuisines from 50+ countries! Local and international chefs come together for a weekend of culinary delights.',
       shortDescription: 'Taste cuisines from 50+ countries!',
       category: await getCategoryId('Food & Drink'),
       organizer: organizerId,
@@ -202,7 +200,7 @@ const seedEvents = async (catMap, organizerId) => {
     },
     {
       title: 'Morning Yoga & Wellness Retreat',
-      description: 'Start your weekend right with a sunrise yoga session followed by meditation, healthy brunch, and wellness workshops. Suitable for all levels from beginners to advanced practitioners.',
+      description: 'Start your weekend right with a sunrise yoga session followed by meditation, healthy brunch, and wellness workshops.',
       shortDescription: 'Sunrise yoga + meditation + healthy brunch',
       category: await getCategoryId('Health & Wellness'),
       organizer: organizerId,
@@ -215,7 +213,7 @@ const seedEvents = async (catMap, organizerId) => {
     },
     {
       title: 'Modern Art Exhibition: Futures',
-      description: 'An immersive exhibition exploring the intersection of technology and traditional art forms. Featuring works from 30 emerging and established artists from around the world.',
+      description: 'An immersive exhibition exploring the intersection of technology and traditional art forms.',
       shortDescription: 'Immersive art meets technology - 30 artists',
       category: await getCategoryId('Arts & Culture'),
       organizer: organizerId,
@@ -228,7 +226,7 @@ const seedEvents = async (catMap, organizerId) => {
     },
     {
       title: 'AI & Machine Learning Summit',
-      description: 'Deep dive into the latest AI/ML trends with hands-on workshops and keynotes from Google, OpenAI, and leading research institutions. Perfect for developers, data scientists, and AI enthusiasts.',
+      description: 'Deep dive into the latest AI/ML trends with hands-on workshops and keynotes from Google, OpenAI, and leading research institutions.',
       shortDescription: 'AI/ML workshops with Google & OpenAI experts',
       category: await getCategoryId('Technology'),
       organizer: organizerId,
@@ -244,7 +242,7 @@ const seedEvents = async (catMap, organizerId) => {
     },
     {
       title: 'NYC Marathon Training Camp',
-      description: 'A 3-day intensive marathon training camp with Olympic coaches. Includes personalized training plans, nutrition workshops, sports massage, and group runs through iconic NYC routes.',
+      description: 'A 3-day intensive marathon training camp with Olympic coaches. Includes personalized training plans, nutrition workshops, sports massage, and group runs.',
       shortDescription: 'Olympic coaches + personalized marathon training',
       category: await getCategoryId('Sports'),
       organizer: organizerId,
@@ -267,13 +265,22 @@ const seedEvents = async (catMap, organizerId) => {
     console.log(`⚠️  Skipping ${eventsData.length - validEvents.length} events due to missing categories`);
   }
 
+  console.log(`📊 Creating ${validEvents.length} events...`);
+
   try {
+    // Delete ALL existing events first
+    await Event.deleteMany({});
+    console.log('🗑️  Cleared existing events');
+    
+    // Insert all events
     const events = await Event.insertMany(validEvents);
     console.log(`✅ Created ${events.length} events`);
     return events;
   } catch (error) {
+    console.error('❌ Event insertion error:', error.message);
+    // If it's a duplicate key error, handle it
     if (error.code === 11000) {
-      console.log('⚠️  Events already exist. Skipping...');
+      console.log('⚠️  Duplicate key error - fetching existing events');
       const existing = await Event.find({});
       console.log(`✅ Found ${existing.length} existing events`);
       return existing;
