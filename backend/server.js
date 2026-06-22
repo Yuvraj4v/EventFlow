@@ -18,6 +18,7 @@ const userRoutes = require('./routes/users');
 const categoryRoutes = require('./routes/categories');
 const paymentRoutes = require('./routes/payments');
 const adminRoutes = require('./routes/admin');
+const seedRoutes = require('./routes/seed'); // ✅ ADD THIS
 
 // Import error handler middleware
 const { errorHandler, notFound } = require('./middleware/errorHandler');
@@ -97,6 +98,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/seed', seedRoutes); // ✅ ADD THIS - Seed endpoint
 
 // ─── Error Handling ─────────────────────────────────────────
 app.use(notFound);
@@ -157,6 +159,7 @@ const startServer = async () => {
     console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
     console.log(`🔗 API URL: http://localhost:${PORT}/api`);
     console.log(`✅ CORS enabled for:`, allowedOrigins.join(', '));
+    console.log(`🌱 Seed endpoint: http://localhost:${PORT}/api/seed`);
   });
 };
 

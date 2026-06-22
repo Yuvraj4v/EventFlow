@@ -304,5 +304,14 @@ const seedDatabase = async () => {
   }
 };
 
-// ─── Handle Script Execution ────────────────────────────────
-seedDatabase();
+// ─── Handle Script Execution & Export ────────────────────────
+// Export for auto-seeding and API endpoint
+module.exports = seedDatabase;
+
+// Run directly if called as script (npm run seed)
+if (require.main === module) {
+  seedDatabase().catch(err => {
+    console.error('❌ Seeding failed:', err);
+    process.exit(1);
+  });
+}
