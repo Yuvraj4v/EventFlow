@@ -24,6 +24,15 @@ const categories = [
 // ─── Helper Functions ────────────────────────────────────────
 const futureDate = (days) => new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 
+// ─── Helper: Generate slug from title ──────────────────────
+const generateSlug = (title) => {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')  // Replace non-alphanumeric with dash
+    .replace(/^-+|-+$/g, '')       // Remove leading/trailing dashes
+    .replace(/-+/g, '-');          // Remove duplicate dashes
+};
+
 const connectDB = async () => {
   const uri = process.env.MONGO_URI || 'mongodb://localhost:27017/eventflow';
   await mongoose.connect(uri);
@@ -43,17 +52,34 @@ const clearDatabase = async () => {
 
 const seedCategories = async () => {
   console.log('🌱 Seeding categories...');
+  
+  // ALWAYS clear categories first to avoid duplicates
+  await Category.deleteMany({});
+  console.log('🗑️  Cleared existing categories');
+  
   try {
     const created = await Category.insertMany(categories);
     console.log(`✅ Created ${created.length} categories`);
-    return created.reduce((map, c) => { map[c.name] = c._id; return map; }, {});
+    
+    // Build the category map
+    const catMap = {};
+    created.forEach(c => {
+      catMap[c.name] = c._id;
+    });
+    console.log('📋 Category map:', Object.keys(catMap));
+    return catMap;
   } catch (error) {
-    // Handle duplicate key errors gracefully
+    console.error('❌ Category insertion error:', error.message);
+    // If duplicate error, fetch existing
     if (error.code === 11000) {
-      console.log('⚠️  Duplicate categories found. Skipping...');
+      console.log('⚠️  Duplicate categories found. Fetching existing...');
       const existing = await Category.find({});
       console.log(`✅ Found ${existing.length} existing categories`);
-      return existing.reduce((map, c) => { map[c.name] = c._id; return map; }, {});
+      const catMap = {};
+      existing.forEach(c => {
+        catMap[c.name] = c._id;
+      });
+      return catMap;
     }
     throw error;
   }
@@ -127,9 +153,19 @@ const seedEvents = async (catMap, organizerId) => {
     return id;
   };
   
+  // ─── HELPER: Generate slug ────────────────────────────────
+  const generateSlug = (title) => {
+    return title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .replace(/-+/g, '-');
+  };
+  
   const eventsData = [
     {
       title: 'React Summit 2025',
+      slug: generateSlug('React Summit 2025'), // ← ADD THIS
       description: 'The biggest React conference of the year. Join 2000+ developers for talks, workshops, and networking.',
       shortDescription: 'The biggest React conference with 50+ speakers',
       category: getCategoryId('Technology'),
@@ -147,6 +183,7 @@ const seedEvents = async (catMap, organizerId) => {
     },
     {
       title: 'Electronic Music Festival',
+      slug: generateSlug('Electronic Music Festival'), // ← ADD THIS
       description: 'A three-day electronic music extravaganza featuring world-class DJs and live acts.',
       shortDescription: '3-day electronic music festival with 40+ artists',
       category: getCategoryId('Music'),
@@ -164,6 +201,7 @@ const seedEvents = async (catMap, organizerId) => {
     },
     {
       title: 'Startup Pitch Competition',
+      slug: generateSlug('Startup Pitch Competition'), // ← ADD THIS
       description: 'Present your startup to top VCs and angel investors. Win up to $100,000 in funding.',
       shortDescription: 'Win $100K in funding - pitch to top investors',
       category: getCategoryId('Business'),
@@ -180,6 +218,7 @@ const seedEvents = async (catMap, organizerId) => {
     },
     {
       title: 'International Food Festival',
+      slug: generateSlug('International Food Festival'), // ← ADD THIS
       description: 'Taste cuisines from 50+ countries! Local and international chefs come together for a weekend of culinary delights.',
       shortDescription: 'Taste cuisines from 50+ countries!',
       category: getCategoryId('Food & Drink'),
@@ -196,6 +235,7 @@ const seedEvents = async (catMap, organizerId) => {
     },
     {
       title: 'Morning Yoga & Wellness Retreat',
+      slug: generateSlug('Morning Yoga Wellness Retreat'), // ← ADD THIS
       description: 'Start your weekend right with a sunrise yoga session followed by meditation, healthy brunch, and wellness workshops.',
       shortDescription: 'Sunrise yoga + meditation + healthy brunch',
       category: getCategoryId('Health & Wellness'),
@@ -209,6 +249,7 @@ const seedEvents = async (catMap, organizerId) => {
     },
     {
       title: 'Modern Art Exhibition: Futures',
+      slug: generateSlug('Modern Art Exhibition Futures'), // ← ADD THIS
       description: 'An immersive exhibition exploring the intersection of technology and traditional art forms.',
       shortDescription: 'Immersive art meets technology - 30 artists',
       category: getCategoryId('Arts & Culture'),
@@ -222,6 +263,7 @@ const seedEvents = async (catMap, organizerId) => {
     },
     {
       title: 'AI & Machine Learning Summit',
+      slug: generateSlug('AI Machine Learning Summit'), // ← ADD THIS
       description: 'Deep dive into the latest AI/ML trends with hands-on workshops and keynotes from Google, OpenAI, and leading research institutions.',
       shortDescription: 'AI/ML workshops with Google & OpenAI experts',
       category: getCategoryId('Technology'),
@@ -238,6 +280,7 @@ const seedEvents = async (catMap, organizerId) => {
     },
     {
       title: 'NYC Marathon Training Camp',
+      slug: generateSlug('NYC Marathon Training Camp'), // ← ADD THIS
       description: 'A 3-day intensive marathon training camp with Olympic coaches. Includes personalized training plans, nutrition workshops, sports massage, and group runs.',
       shortDescription: 'Olympic coaches + personalized marathon training',
       category: getCategoryId('Sports'),
@@ -274,43 +317,6 @@ const seedEvents = async (catMap, organizerId) => {
   } catch (error) {
     console.error('❌ Event insertion error:', error.message);
     throw error;
-  }
-};
-
-const seedBooking = async (user, events) => {
-  if (events.length === 0) return;
-  
-  console.log('📋 Creating sample booking...');
-  try {
-    const firstEvent = events[0];
-    const ticket = firstEvent.tickets[1] || firstEvent.tickets[0];
-    
-    await Booking.create({
-      user: user._id,
-      event: firstEvent._id,
-      tickets: [{
-        ticketType: { ticketId: ticket._id, name: ticket.name, price: ticket.price },
-        quantity: 1,
-        subtotal: ticket.price,
-        ticketCodes: ['TKT-ABC12345']
-      }],
-      attendeeInfo: { 
-        firstName: user.name.split(' ')[0] || 'John', 
-        lastName: user.name.split(' ')[1] || 'Doe', 
-        email: user.email, 
-        phone: '+1-555-0100' 
-      },
-      payment: { 
-        method: 'stripe', 
-        status: 'completed', 
-        amount: ticket.price, 
-        paidAt: new Date() 
-      },
-      status: 'confirmed'
-    });
-    console.log('✅ Sample booking created');
-  } catch (error) {
-    console.log('⚠️  Booking creation skipped:', error.message);
   }
 };
 
