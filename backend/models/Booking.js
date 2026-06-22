@@ -30,7 +30,6 @@ const BookingSchema = new mongoose.Schema({
     },
     quantity: { type: Number, required: true, min: 1 },
     subtotal: Number,
-    // Individual ticket codes (one per ticket)
     ticketCodes: [String]
   }],
   // Attendee info (may differ from user account)
@@ -41,11 +40,11 @@ const BookingSchema = new mongoose.Schema({
     phone: String,
     organization: String
   },
-  // Payment details
+  // Payment details - FIXED to accept more values
   payment: {
     method: {
       type: String,
-      enum: ['stripe', 'razorpay', 'free', 'cash', ''],
+      enum: ['stripe', 'razorpay', 'free', 'cash', 'pending', 'Pending', ''],
       default: 'free'
     },
     status: {
@@ -67,7 +66,7 @@ const BookingSchema = new mongoose.Schema({
   },
   // QR Code for ticket verification
   qrCode: {
-    type: String, // Base64 encoded QR code image
+    type: String,
     default: null
   },
   // Cancellation details
@@ -87,7 +86,6 @@ const BookingSchema = new mongoose.Schema({
     default: false
   },
   checkedInAt: Date,
-  // Notes
   specialRequests: String,
   notes: String
 }, {
@@ -97,26 +95,32 @@ const BookingSchema = new mongoose.Schema({
 
 // ─── Virtual: Total amount ───────────────────────────────────
 BookingSchema.virtual('totalAmount').get(function() {
+  if (!this.tickets || this.tickets.length === 0) return 0;
   return this.tickets.reduce((sum, ticket) => sum + (ticket.subtotal || 0), 0);
 });
 
 // ─── Virtual: Total tickets ──────────────────────────────────
 BookingSchema.virtual('totalTickets').get(function() {
+  if (!this.tickets || this.tickets.length === 0) return 0;
   return this.tickets.reduce((sum, ticket) => sum + ticket.quantity, 0);
 });
 
-// ─── Pre-save hook: Ensure payment method is valid ──────────
+// ─── Pre-save hook: Fix payment method ──────────────────────
 BookingSchema.pre('save', function(next) {
-  // If payment.method is empty or invalid, set to 'free'
+  // Fix payment method
   const validMethods = ['stripe', 'razorpay', 'free', 'cash'];
-  if (!this.payment.method || !validMethods.includes(this.payment.method)) {
+  if (!this.payment.method || !validMethods.includes(this.payment.method.toLowerCase())) {
     this.payment.method = 'free';
+  } else {
+    this.payment.method = this.payment.method.toLowerCase();
   }
   
-  // If payment.status is empty or invalid, set to 'pending'
+  // Fix payment status
   const validStatuses = ['pending', 'completed', 'failed', 'refunded', 'partial-refund'];
-  if (!this.payment.status || !validStatuses.includes(this.payment.status)) {
+  if (!this.payment.status || !validStatuses.includes(this.payment.status.toLowerCase())) {
     this.payment.status = 'pending';
+  } else {
+    this.payment.status = this.payment.status.toLowerCase();
   }
   
   next();
