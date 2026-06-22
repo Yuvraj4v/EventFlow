@@ -45,12 +45,12 @@ const BookingSchema = new mongoose.Schema({
   payment: {
     method: {
       type: String,
-      enum: ['stripe', 'razorpay', 'free', 'cash'],
+      enum: ['stripe', 'razorpay', 'free', 'cash', ''],
       default: 'free'
     },
     status: {
       type: String,
-      enum: ['pending', 'completed', 'failed', 'refunded', 'partial-refund'],
+      enum: ['pending', 'completed', 'failed', 'refunded', 'partial-refund', ''],
       default: 'pending'
     },
     transactionId: String,
@@ -103,6 +103,23 @@ BookingSchema.virtual('totalAmount').get(function() {
 // ─── Virtual: Total tickets ──────────────────────────────────
 BookingSchema.virtual('totalTickets').get(function() {
   return this.tickets.reduce((sum, ticket) => sum + ticket.quantity, 0);
+});
+
+// ─── Pre-save hook: Ensure payment method is valid ──────────
+BookingSchema.pre('save', function(next) {
+  // If payment.method is empty or invalid, set to 'free'
+  const validMethods = ['stripe', 'razorpay', 'free', 'cash'];
+  if (!this.payment.method || !validMethods.includes(this.payment.method)) {
+    this.payment.method = 'free';
+  }
+  
+  // If payment.status is empty or invalid, set to 'pending'
+  const validStatuses = ['pending', 'completed', 'failed', 'refunded', 'partial-refund'];
+  if (!this.payment.status || !validStatuses.includes(this.payment.status)) {
+    this.payment.status = 'pending';
+  }
+  
+  next();
 });
 
 // ─── Indexes ─────────────────────────────────────────────────
