@@ -61,8 +61,12 @@ export default function EventDetailPage() {
     }
   };
 
-  const totalTickets = Object.values(selectedTickets).reduce((a, b) => a + b, 0);
-  const totalPrice = event?.tickets?.reduce((sum, t) => sum + (selectedTickets[t._id] || 0) * t.price, 0) || 0;
+  // ─── FIXED: Safe calculations with null checks ──────────────
+  const totalTickets = Object.values(selectedTickets || {}).reduce((a, b) => a + b, 0);
+  const totalPrice = event?.tickets?.reduce((sum, t) => {
+    const quantity = selectedTickets?.[t._id] || 0;
+    return sum + quantity * (t?.price || 0);
+  }, 0) || 0;
 
   const handleBook = () => {
     if (!isAuthenticated) { toast.error('Please login to book events'); navigate('/login'); return; }
@@ -70,21 +74,33 @@ export default function EventDetailPage() {
     setConfirmModal(true);
   };
 
+  // ─── FIXED: confirmBooking with payment field and safe access ──
   const confirmBooking = async () => {
     setBookingLoading(true);
     try {
-      const tickets = event.tickets
-        .filter(t => selectedTickets[t._id] > 0)
-        .map(t => ({ ticketId: t._id, quantity: selectedTickets[t._id] }));
+      // Safe ticket selection
+      const tickets = event?.tickets
+        ?.filter(t => (selectedTickets[t._id] || 0) > 0)
+        ?.map(t => ({ ticketId: t._id, quantity: selectedTickets[t._id] })) || [];
+
+      if (tickets.length === 0) {
+        toast.error('Please select at least one ticket');
+        setBookingLoading(false);
+        return;
+      }
 
       const { data } = await bookingAPI.create({
         eventId: event._id,
         tickets,
         attendeeInfo: {
-          firstName: user.name.split(' ')[0],
-          lastName: user.name.split(' ').slice(1).join(' ') || '-',
-          email: user.email,
-          phone: user.phone || ''
+          firstName: user?.name?.split(' ')[0] || 'User',
+          lastName: user?.name?.split(' ').slice(1).join(' ') || '',
+          email: user?.email || '',
+          phone: user?.phone || ''
+        },
+        payment: {
+          method: 'free',
+          status: 'pending'
         }
       });
       setBooking(data.data);
@@ -92,6 +108,7 @@ export default function EventDetailPage() {
       setBookingModal(true);
       toast.success('Booking confirmed! 🎉');
     } catch (e) {
+      console.error('Booking error:', e);
       toast.error(e.response?.data?.message || 'Booking failed');
     } finally {
       setBookingLoading(false);
@@ -320,9 +337,9 @@ export default function EventDetailPage() {
                   {isPast && <div className="text-gray-400 text-sm">This event has ended</div>}
                 </div>
 
-                {/* Ticket selection */}
+                {/* Ticket selection - FIXED with null checks */}
                 {!isPast && !isSoldOut && event.tickets?.map(ticket => {
-                  const available = ticket.quantity - ticket.sold;
+                  const available = (ticket.quantity || 0) - (ticket.sold || 0);
                   return (
                     <div key={ticket._id} className="mb-4 p-3 rounded-xl border border-gray-100 dark:border-gray-700">
                       <div className="flex items-start justify-between mb-2">
@@ -345,7 +362,14 @@ export default function EventDetailPage() {
                           {selectedTickets[ticket._id] || 0}
                         </span>
                         <button
-                          onClick={() => setSelectedTickets(s => ({ ...s, [ticket._id]: Math.min(ticket.maxPerBooking, available, (s[ticket._id] || 0) + 1) }))}
+                          onClick={() => setSelectedTickets(s => ({ 
+                            ...s, 
+                            [ticket._id]: Math.min(
+                              ticket.maxPerBooking || 10, 
+                              available, 
+                              (s[ticket._id] || 0) + 1
+                            ) 
+                          }))}
                           className="w-7 h-7 rounded-lg bg-primary-100 dark:bg-primary-900 flex items-center justify-center font-bold text-primary-600 dark:text-primary-400 hover:bg-primary-200 transition-colors">
                           +
                         </button>
